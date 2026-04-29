@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ComplaintStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  complaints      Complaint[]
+  statusHistories StatusHistory[]
+}
+
+model Category {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  description   String?
+  priorityLevel Int      @default(1) // 1 = Low, 2 = Medium, 3 = High
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  complaints Complaint[]
+}
+
+model Complaint {
+  id          String          @id @default(uuid())
+  title       String
+  description String
+  imageUrl    String?
+  status      ComplaintStatus @default(PENDING)
+
+  // Location embedded for simplicity, but could be separate table
+  lat     Float
+  lng     Float
+  address String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statusHistory StatusHistory[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([categoryId])
+}
+
+model StatusHistory {
+  id          String    @id @default(uuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  oldStatus ComplaintStatus
+  newStatus ComplaintStatus
+  notes     String?
+
+  changedById String
+  changedBy   User   @relation(fields: [changedById], references: [id])
+
+  changedAt DateTime @default(now())
+}
